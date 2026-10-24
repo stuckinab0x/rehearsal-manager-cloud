@@ -85,8 +85,8 @@ export default async function handleStudentsRequest(req: Request<unknown, Incomi
   // Save All Provided Students
   if (routePath === '/app' && req.method === 'PUT') {
     const body = await req.json<ParsedShowStudent[]>();
-
-    const stmts = body.map<D1PreparedStatement>(x => db.prepare(
+    const studentsWithNullForUndefinedLesson = body.map(x => ({ ...x, lesson: x.lesson ?? null }));
+    const stmts = studentsWithNullForUndefinedLesson.map<D1PreparedStatement>(x => db.prepare(
       `
         INSERT OR REPLACE INTO students (id, name, main, castings, lesson, show_id)
         VALUES (?, ?, ?, ?, ?, ?);
