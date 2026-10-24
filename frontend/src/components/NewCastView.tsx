@@ -3,16 +3,14 @@ import styled from 'styled-components';
 import { useEditor } from '../contexts/editor-context';
 import InputUpdate from '../models/input-update';
 import { createInputs } from '../utils';
-import { useProfile } from '../contexts/profile-context';
 import { useViews } from '../contexts/views-context';
-import { MainInstrument } from '../models/student';
+import Student, { MainInstrument } from '../models/student';
 
-const mapInputs = (inputs: InputUpdate[], main: MainInstrument) => inputs.map(x => ({ name: x.value.trim(), main, castings: [], }));
+const mapInputs = (inputs: InputUpdate[], main: MainInstrument) => inputs.map<Student>(x => ({ id: crypto.randomUUID(), name: x.value.trim(), main, castings: [] }));
 
 const NewCastView: FC = () => {
-  const { setUnsavedData } = useProfile();
   const { setEditorView } = useViews();
-  const { newShowStatus, setNewShowStatus, currentEditingShow, setCurrentEditingShow } = useEditor();
+  const { newShowStatus, setNewShowStatus, currentEditingShow, addNewCastStudents } = useEditor();
 
   const [guitarInputs, setGuitarInputs] = useState<InputUpdate[]>(createInputs(8));
   const [bassInputs, setBassInputs] = useState<InputUpdate[]>(createInputs(4));
@@ -25,15 +23,21 @@ const NewCastView: FC = () => {
       const newInputs = [...oldState];
       newInputs[index] = { ...newInputs[index], value: input.value };
       return newInputs;
-    })
+    });
   }, []);
 
   const addAnotherInput = useCallback((arraySetter: React.Dispatch<SetStateAction<InputUpdate[]>>) => {
     arraySetter(oldState => [...oldState, { value: '', id: oldState.length }]);
-  }, [])
+  }, []);
 
   const potentialCastList = useMemo(() => {
-    return [...mapInputs(guitarInputs, 'Guitar'), ...mapInputs(bassInputs, 'Bass'), ...mapInputs(drumInputs, 'Drums'), ...mapInputs(keysInputs, 'Keys'), ...mapInputs(voxInputs, 'Vocals')].filter(x => x.name);
+    return [
+      ...mapInputs(guitarInputs, 'Guitar'),
+      ...mapInputs(bassInputs, 'Bass'),
+      ...mapInputs(drumInputs, 'Drums'),
+      ...mapInputs(keysInputs, 'Keys'),
+      ...mapInputs(voxInputs, 'Vocals'),
+    ].filter(x => x.name);
   }, [guitarInputs, bassInputs, drumInputs, keysInputs, voxInputs]);
 
   const buttonText = useMemo(() => {
@@ -43,13 +47,13 @@ const NewCastView: FC = () => {
       return 'Fix duplicate names';
     if (newShowStatus === 'songsWereAdded')
       return 'Next - Casting/Overview';
-    return 'Next - Add Songs'
+    return 'Next - Add Songs';
   }, [potentialCastList, newShowStatus]);
 
   const addCast = useCallback(() => {
     if (!currentEditingShow)
       return;
-    setCurrentEditingShow({ ...currentEditingShow, cast: potentialCastList });
+    addNewCastStudents(potentialCastList);
     if (newShowStatus === 'songsWereAdded') {
       setEditorView('showOverview');
       setNewShowStatus(undefined);
@@ -58,8 +62,7 @@ const NewCastView: FC = () => {
       setNewShowStatus('castWasAdded');
       setEditorView('newShowSongs');
     }
-    setUnsavedData(true);
-  }, [potentialCastList, currentEditingShow, newShowStatus, setNewShowStatus, setEditorView, setCurrentEditingShow, setUnsavedData])
+  }, [potentialCastList, currentEditingShow, newShowStatus, setNewShowStatus, setEditorView]);
 
   const instrumentSectionProps = useMemo(() => [
     { instName: 'Guitar', inputs: guitarInputs, setter: setGuitarInputs },
@@ -67,7 +70,7 @@ const NewCastView: FC = () => {
     { instName: 'Drums', inputs: drumInputs, setter: setDrumInputs },
     { instName: 'Keys', inputs: keysInputs, setter: setKeysInputs },
     { instName: 'Vocals', inputs: voxInputs, setter: setVoxInputs },
-  ], [guitarInputs, bassInputs, drumInputs, keysInputs, voxInputs])
+  ], [guitarInputs, bassInputs, drumInputs, keysInputs, voxInputs]);
 
   if (currentEditingShow)
     return (
@@ -75,9 +78,13 @@ const NewCastView: FC = () => {
         <h2>
           { currentEditingShow.name }: Cast Members
         </h2>
-        <h4><i>Add students to the cast list.<br />
-        Instrument groups will help with organization later<br/>
-        and don't affect song casting possibilities.</i></h4>
+        <h4>
+          <i>
+            Add students to the cast list.<br />
+            Instrument groups will help with organization later<br/>
+            and don't affect song casting possibilities.
+          </i>
+        </h4>
         { instrumentSectionProps.map(x => (<InstrumentSection key={ x.instName }>
           <InstrumentHeader>
             <h3>{ x.instName }</h3>
@@ -95,8 +102,8 @@ const NewCastView: FC = () => {
           </h3>
         </DoneButton>
       </ViewMain>
-    )
-}
+    );
+};
 
 const ViewMain = styled.div`
   display: flex;
@@ -163,7 +170,7 @@ interface DoneButtonProps {
 
 const DoneButton = styled(AddButton)<DoneButtonProps>`
   margin-top: 20px;
-  ${ props => props.$disabled && 'pointer-events: none; opacity: 0.5;'}
+  ${ props => props.$disabled && 'pointer-events: none; opacity: 0.5;' }
   
   > h3 {
     font-size: 30px;

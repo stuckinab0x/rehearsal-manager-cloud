@@ -1,12 +1,7 @@
-import Student from './student';
-import Song from './song';
-
-export default interface Show {
+export interface ShowProps {
   id: string;
   name: string;
   singleArtist: boolean;
-  twoPmRehearsal: boolean;
+  twoPMRehearsal: boolean;
   setSplitIndex: number;
-  songs: Song[];
-  cast: Student[];
 }

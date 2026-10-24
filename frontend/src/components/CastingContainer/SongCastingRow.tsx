@@ -4,7 +4,7 @@ import Song from '../../models/song';
 import CastingButton from './CastingButton';
 import { ALL_CAST_INST, CastingInst } from '../../models/student';
 import { useEditor } from '../../contexts/editor-context';
-import SongDragDropArea from './SongsDragDropArea';
+import SongDragDropArea from './SongDragDropArea';
 import { useProfile } from '../../contexts/profile-context';
 import { useViews } from '../../contexts/views-context';
 
@@ -13,13 +13,13 @@ interface SongCastingRowProps {
   disabled: boolean;
   setActiveSongEdit: (activeEdit: string | null) => void;
   currentDragging: string | null;
-  setCurrentDragging: (songName: string | null) => void;
+  setCurrentDragging: (songID: string | null) => void;
 }
 
 const SongCastingRow: FC<SongCastingRowProps> = ({ song, disabled, setActiveSongEdit, currentDragging, setCurrentDragging }) => {
   const { prefs } = useProfile();
   const { toolsMode } = useViews();
-  const { currentEditingShow, setCastEdit, renameSong, deleteSong, reorderSong } = useEditor();
+  const { currentEditingShow, showSongs, showCast, setCastEdit, renameSong, deleteSong, reorderSong } = useEditor();
   
   const [editingName, setEditingName] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -40,19 +40,19 @@ const SongCastingRow: FC<SongCastingRowProps> = ({ song, disabled, setActiveSong
     return hidden;
   }, [prefs]);
 
-  const getCasting = useCallback((songId: string, inst: CastingInst) => {
-    if (!currentEditingShow)
+  const getCasting = useCallback((songID: string, inst: CastingInst) => {
+    if (!showCast)
       return;
-    const student = currentEditingShow.cast.find(x => !!x.castings.find(casting => casting.songId === songId && casting.inst === inst));
+    const student = showCast.find(x => !!x.castings.find(casting => casting.songID === songID && casting.inst === inst));
     if (student)
       return student.name;
-  }, [currentEditingShow]);
+  }, [showCast]);
 
   const nameIsDupe = useMemo(() => {
-    if (!currentEditingShow)
+    if (!showSongs)
       return false;
-    return currentEditingShow?.songs.filter(x => x.name !== song.name).some(x => x.name.toLowerCase() === nameInput.toLowerCase());
-  }, [currentEditingShow, nameInput, song.name]);
+    return showSongs.filter(x => x.name !== song.name).some(x => x.name.toLowerCase() === nameInput.toLowerCase());
+  }, [showSongs, nameInput, song.name]);
 
   const handleRenameConfirm = useCallback(() => {
     renameSong(song.id, nameInput, artistInput);
@@ -71,24 +71,28 @@ const SongCastingRow: FC<SongCastingRowProps> = ({ song, disabled, setActiveSong
   }, [setCurrentDragging, song.id]);
 
   const handleDrop = useCallback(() => {
-    const songPositionIndex = currentEditingShow?.songs.findIndex(x => x.id === song.id)
-    if (currentDragging === song.id || !currentDragging || songPositionIndex === undefined)
+    if (!showSongs)
       return;
-    reorderSong(currentDragging, songPositionIndex)
+    
+    if (currentDragging === song.id || !currentDragging)
+      return;
+    reorderSong(currentDragging, song.setOrder);
     setDragHover(false);
     setCurrentDragging(null);
-  }, [reorderSong, song.id, currentDragging, setCurrentDragging, currentEditingShow?.songs]);
+  }, [reorderSong, song.id, currentDragging, setCurrentDragging, showSongs]);
 
   if (hidden && currentEditingShow)
     return (
       <RowMain $disabled={ disabled }>
-        { toolsMode && <SongDragDropArea 
-          songId={ song.id }
-          currentDragging={ currentDragging }
-          dragHover={ dragHover }
-          setDragHover={ setDragHover }
-          handleDrop={ handleDrop }
-        /> }
+        { toolsMode &&
+          <SongDragDropArea 
+            songID={ song.id }
+            currentDragging={ currentDragging }
+            dragHover={ dragHover }
+            setDragHover={ setDragHover }
+            handleDrop={ handleDrop }
+          />
+        }
         <div>
           <SongDisplay
             $tileColor={ song.color }
@@ -97,11 +101,12 @@ const SongCastingRow: FC<SongCastingRowProps> = ({ song, disabled, setActiveSong
             draggable={ toolsMode && !editingName && !deleting }
             onDrag={ handleDragStart }
             onDragEnd={ () => setCurrentDragging(null) }
-            $toolsMode={ toolsMode && !editingName && !deleting }>
+            $toolsMode={ toolsMode && !editingName && !deleting }
+          >
             { toolsMode && !editingName && !deleting
             && <div>
-              <span className='material-symbols-outlined' onClick={ () => { setEditingName(true); setActiveSongEdit(song.id) } } >edit</span>
-              <span className='material-symbols-outlined' onClick={ () => { setDeleting(true); setActiveSongEdit(song.id) } } >delete</span>
+              <span className='material-symbols-outlined' onClick={ () => { setEditingName(true); setActiveSongEdit(song.id); } } >edit</span>
+              <span className='material-symbols-outlined' onClick={ () => { setDeleting(true); setActiveSongEdit(song.id); } } >delete</span>
             </div> }
             { editingName && <h3>Rename: </h3>}
             <h3>{ song.name }{ song.artist && ` - ${ song.artist }` }</h3>
@@ -118,13 +123,20 @@ const SongCastingRow: FC<SongCastingRowProps> = ({ song, disabled, setActiveSong
               { !currentEditingShow?.singleArtist && <NameInput type='text' autoFocus value={ artistInput } onChange={ event => setArtistInput(event.currentTarget.value) }  /> }
             </div>
           }
-          { toolsMode && (editingName || deleting) && <ActionButton onClick={ () => { setEditingName(false); setDeleting(false); setActiveSongEdit(null) } }><h3>{ deleting ? 'Cancel' : 'Discard Changes' }</h3></ActionButton> }
-          { !editingName && !deleting && ALL_CAST_INST.filter(x => !hidden.includes(x)).map(inst => <CastingButton key={ inst } disabled={ toolsMode } assignedStudent={ getCasting(song.id, inst) } startCasting={ () => setCastEdit(song.id, inst) } />) }
+          { toolsMode && (editingName || deleting) &&
+            <ActionButton
+              onClick={ () => { setEditingName(false); setDeleting(false); setActiveSongEdit(null); } }
+            >
+              <h3>{ deleting ? 'Cancel' : 'Discard Changes' }</h3>
+            </ActionButton>
+          }
+          { !editingName && !deleting && ALL_CAST_INST.filter(x => !hidden.includes(x)).map(inst =>
+            <CastingButton key={ inst } disabled={ toolsMode } assignedStudent={ getCasting(song.id, inst) } startCasting={ () => setCastEdit(song.id, inst) } />) }
         </div>
       </RowMain>
-    )
+    );
   return null;
-}
+};
 
 interface RowProps {
   $disabled: boolean;

@@ -13,10 +13,15 @@ const MainSelector: FC<MainSelectorProps> = ({ student }) => {
 
   return (
     <Selector>
-      { ALL_INSTRUMENTS.map(x => <SelectorButton key={ x } select={ () => updateStudentInfo(student.name, { name: student.name, lesson: student.lesson, main: x  }) } value={ x } active={ student.main === x } />) }
+      { ALL_INSTRUMENTS.map(x =>
+        <SelectorButton
+          key={ x }
+          select={ () => updateStudentInfo(student.id, { name: student.name, lesson: student.lesson, main: x  }) } value={ x } active={ student.main === x }
+        />,
+      ) }
     </Selector>
-  )
-}
+  );
+};
 
 const Selector = styled.div`
   display: flex;

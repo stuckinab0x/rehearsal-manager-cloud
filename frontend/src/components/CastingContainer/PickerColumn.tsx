@@ -18,13 +18,13 @@ const PickerColumn: FC<PickerColumnProps> = ({ instrument, castMembers }) => {
       </InstrumentHeader>
       {
         castMembers.map(x =>
-          <CastMember key={ x.name } onClick={ () => assignCasting(x.name) }>
+          <CastMember key={ x.name } onClick={ () => assignCasting(x.id) }>
             <h3>{ x.name }</h3>
           </CastMember>)
       }
     </Column>
-  )
-}
+  );
+};
 
 const Column = styled.div`
   display: flex;

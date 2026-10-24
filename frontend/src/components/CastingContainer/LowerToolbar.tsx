@@ -13,35 +13,38 @@ interface LowerToolbarProps {
 const LowerToolbar: FC<LowerToolbarProps> = ({ addingSong, setAddingSong }) => {
   const { prefs, setPrefs } = useProfile();
   const {  setEditorView, toolsMode } = useViews();
-  const { currentEditingShow, addSong, saveSetListSplitIndex } = useEditor();
+  const { currentEditingShow, showSongs, addSong, saveSetListSplitIndex } = useEditor();
   
   const [nameInput, setNameInput] = useState('');
   const [artistInput, setArtistInput] = useState('');
   
   const handleAddSongClick = useCallback(() => {
-    currentEditingShow?.singleArtist ? addSong(nameInput) : addSong(nameInput, artistInput);
+    if (currentEditingShow?.singleArtist)
+      addSong(nameInput);
+    else
+      addSong(nameInput, artistInput);
     setAddingSong(false);
     setNameInput('');
     setArtistInput('');
   }, [nameInput, artistInput, addSong, currentEditingShow, setAddingSong]);
 
   const nameIsDupe = useMemo(() => {
-    return currentEditingShow?.songs.some(x => x.name.toLowerCase() === nameInput.toLowerCase());
-  }, [currentEditingShow, nameInput]);
+    return showSongs?.some(x => x.name.toLowerCase() === nameInput.toLowerCase());
+  }, [showSongs, nameInput]);
 
   const handlePrefsToggle = useCallback((prefName: keyof Prefs) => {
     setPrefs(oldState => {
       if (!oldState)
         return null;
       return { ...oldState, [prefName]: !oldState[prefName] };
-    })
+    });
   }, [setPrefs]);
 
   const handleSetSplitClick = useCallback((newSplitIndex: number) => {
-    if (newSplitIndex < 0 || (currentEditingShow && newSplitIndex > currentEditingShow.songs.length))
+    if (newSplitIndex < 0 || (showSongs && newSplitIndex > showSongs.length))
       return;
-    saveSetListSplitIndex(newSplitIndex)
-  }, [currentEditingShow, saveSetListSplitIndex]);
+    saveSetListSplitIndex(newSplitIndex);
+  }, [showSongs, saveSetListSplitIndex]);
 
   if (toolsMode && currentEditingShow)
     return (
@@ -56,14 +59,14 @@ const LowerToolbar: FC<LowerToolbarProps> = ({ addingSong, setAddingSong }) => {
           <span className='material-symbols-outlined'>add</span>
         </SmallButton>
       </ToolbarMain>
-    )
+    );
 
   if (currentEditingShow && prefs)
     return (
       <ToolbarMain>
         <Button $disabled={ addingSong && (!nameInput || nameIsDupe) } onClick={ () => addingSong ? handleAddSongClick() : setAddingSong(true) }>
           { nameIsDupe ? <h3>Song already exists</h3>
-          : <h3>{ addingSong ? 'Save and Add Song' : 'Add Song' }</h3>
+            : <h3>{ addingSong ? 'Save and Add Song' : 'Add Song' }</h3>
           }
         </Button>
         { !addingSong
@@ -93,8 +96,8 @@ const LowerToolbar: FC<LowerToolbarProps> = ({ addingSong, setAddingSong }) => {
           </SmallButton>
         </> }
       </ToolbarMain>
-    )
-}
+    );
+};
 
 const ToolbarMain = styled.div`
   display: flex;
@@ -156,7 +159,7 @@ const SetDividerText = styled.div`
     color: white;
     margin: 0;
   }
-`
+`;
 
 const NameInput = styled.input`
   color: white;

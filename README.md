@@ -1,5 +1,5 @@
-# Rehearsal Manager Server
+# Rehearsal Manager
 
 <br>
 
-Backups db server for Rehearsal Manager
+A web app for managing music rehearsals

@@ -4,60 +4,62 @@ import { useEditor } from '../../contexts/editor-context';
 import SongCastingRow from './SongCastingRow';
 import CastListHeader from './CastListHeader';
 import LowerToolbar from './LowerToolbar';
-import SongDragDropArea from './SongsDragDropArea';
+import SongDragDropArea from './SongDragDropArea';
 import { useViews } from '../../contexts/views-context';
 
 const MainCastingContainer: FC = () => {
   const { toolsMode } = useViews();
-  const { currentEditingShow, currentCastEdit, reorderSong } = useEditor();
+  const { currentEditingShow, currentCastEdit, reorderSong, showSongs } = useEditor();
   
   const [activeSongEdit, setActiveSongEdit] = useState<string | null>(null);
   const [addingSong, setAddingSong] = useState(false);
-  const [currentDragging, setCurrentDragging] = useState<string | null>('');
+  const [currentDragging, setCurrentDragging] = useState<string | null>(null);
   const [endDragHover, setEndDragHover] = useState(false);
 
   const handleEndDrop = useCallback(() => {
-    if (!currentDragging || !currentEditingShow)
+    if (!currentDragging|| !showSongs)
       return;
-    reorderSong(currentDragging, currentEditingShow?.songs.length)
+    reorderSong(currentDragging, showSongs.length);
     setEndDragHover(false);
     setCurrentDragging(null);
-  }, [currentDragging, currentEditingShow, reorderSong]);
+  }, [currentDragging, reorderSong]);
 
   const insertSetDivider = useCallback((elements: JSX.Element[]) => {
     if (!currentEditingShow)
       return;
-    const setList = [...elements]
+    const setList = [...elements];
     if (currentEditingShow.setSplitIndex > 0 || toolsMode)
-      setList.splice(currentEditingShow?.setSplitIndex, 0, <SetListDivider key='divider'>{ toolsMode && <h3>Set 2</h3> }</SetListDivider>)
+      setList.splice(currentEditingShow?.setSplitIndex, 0, <SetListDivider key='divider'>{ toolsMode && <h3>Set 2</h3> }</SetListDivider>);
     return setList;
   }, [currentEditingShow, toolsMode]);
 
-  if (currentEditingShow)
-  return (
-    <ContainerMain $fade={ !!currentCastEdit } >
-      <CastListHeader showName={ currentEditingShow.name } disabled={ addingSong } />
-      { insertSetDivider(currentEditingShow.songs.map(song => 
+  if (currentEditingShow && showSongs)
+    return (
+      <ContainerMain $fade={ !!currentCastEdit } >
+        <CastListHeader showName={ currentEditingShow.name } disabled={ addingSong } />
+        { insertSetDivider(showSongs.toSorted((a, b) => a.setOrder - b.setOrder).map(song => 
           <SongCastingRow
             key={ song.id }
             song={ song }
             disabled={ addingSong || (!!activeSongEdit && activeSongEdit !== song.id) }
             currentDragging={ currentDragging }
             setActiveSongEdit={ setActiveSongEdit } setCurrentDragging={ setCurrentDragging }
-          />
+          />,
         ))
-      }
-      { toolsMode && <SongDragDropArea
-        songId='$$last'
-        currentDragging={ currentDragging }
-        dragHover={ endDragHover }
-        setDragHover={ setEndDragHover }
-        handleDrop={ handleEndDrop }
-      /> }
-      <LowerToolbar addingSong={ addingSong } setAddingSong={ setAddingSong } />
-    </ContainerMain>
-  )
-}
+        }
+        { toolsMode &&
+          <SongDragDropArea
+            songID={ '$$last$$' }
+            currentDragging={ currentDragging }
+            dragHover={ endDragHover }
+            setDragHover={ setEndDragHover }
+            handleDrop={ handleEndDrop }
+          />
+        }
+        <LowerToolbar addingSong={ addingSong } setAddingSong={ setAddingSong } />
+      </ContainerMain>
+    );
+};
 
 interface ContainerProps {
   $fade: boolean;

@@ -4,14 +4,11 @@ import { useEditor } from '../contexts/editor-context';
 import InputUpdate from '../models/input-update';
 import { createInputs } from '../utils';
 import Song from '../models/song';
-import { useProfile } from '../contexts/profile-context';
 import { useViews } from '../contexts/views-context';
-import { v4 as uuidv4 } from 'uuid';
 
 const NewSongsView: FC = () => {
-  const { setUnsavedData } = useProfile();
   const { setEditorView } = useViews();
-  const { currentEditingShow, newShowStatus, setNewShowStatus, setCurrentEditingShow, availableColors } = useEditor();
+  const { currentEditingShow, newShowStatus, setNewShowStatus, availableColors, addNewShowSongs } = useEditor();
   
   const [songInputs, setSongInputs] = useState<InputUpdate[]>(createInputs(20));
   const [artistInputs, setArtistInputs] = useState<InputUpdate[]>(createInputs(20));
@@ -38,10 +35,11 @@ const NewSongsView: FC = () => {
   const addSongs = useCallback(() => {
     if (!currentEditingShow)
       return;
-    let songs: Song[] = songInputs.map((x, i) => ({ id: uuidv4(), name: x.value, artist: artistInputs[i].value, color: availableColors[i] })).filter(x => x.name);
+
+    let songs: Song[] = songInputs.map((x, i) => ({ id: crypto.randomUUID(), name: x.value, artist: artistInputs[i].value, setOrder: i, color: availableColors[i] })).filter(x => x.name);
     if (currentEditingShow.singleArtist)
-      songs = songs.map((x, i) => ({ id: x.id, name: x.name, order: i, color: availableColors[i] }))
-    setCurrentEditingShow({ ...currentEditingShow, songs: [...songs] });
+      songs = songs.map((x, i) => ({ id: x.id, name: x.name, setOrder: i, color: availableColors[i] }));
+    addNewShowSongs(songs);
     if (newShowStatus === 'castWasAdded') {
       setEditorView('showOverview');
       setNewShowStatus(undefined);
@@ -50,8 +48,7 @@ const NewSongsView: FC = () => {
       setNewShowStatus('songsWereAdded');
       setEditorView('newShowCast');
     }
-    setUnsavedData(true);
-  }, [songInputs, artistInputs, currentEditingShow, setCurrentEditingShow, newShowStatus, setNewShowStatus, setEditorView, setUnsavedData, availableColors]);
+  }, [songInputs, artistInputs, currentEditingShow, newShowStatus, setNewShowStatus, setEditorView, availableColors]);
 
   const addAnotherInput = useCallback(() => {
     setSongInputs(oldState => [...oldState, { value: '', id: oldState.length }]);
@@ -67,7 +64,15 @@ const NewSongsView: FC = () => {
         <SongInputsContainer>
           <InputsColumn>
             <h2>Song Name</h2>
-            { songInputs.map((x, i) => <Input type='text' $songInput={ !currentEditingShow.singleArtist } key={ x.id } value={ x.value } onChange={ event => handleInputChange(i, event.currentTarget, setSongInputs) } />) }
+            { songInputs.map((x, i) =>
+              <Input
+                type='text'
+                $songInput={ !currentEditingShow.singleArtist }
+                key={ x.id }
+                value={ x.value }
+                onChange={ event => handleInputChange(i, event.currentTarget, setSongInputs) }
+              />,
+            ) }
           </InputsColumn>
           { !currentEditingShow.singleArtist
           && <InputsColumn>
@@ -86,8 +91,8 @@ const NewSongsView: FC = () => {
           </h3>
         </DoneButton>
       </ViewMain>
-    )
-}
+    );
+};
 
 const ViewMain = styled.div`
   display: flex;
@@ -151,7 +156,7 @@ interface DoneButtonProps {
 
 const DoneButton = styled(AddButton)<DoneButtonProps>`
   margin-top: 20px;
-  ${ props => props.$disabled && 'pointer-events: none; opacity: 0.5;'}
+  ${ props => props.$disabled && 'pointer-events: none; opacity: 0.5;' }
   
   > h3 {
     font-size: 30px;
